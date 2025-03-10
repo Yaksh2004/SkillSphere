@@ -34,7 +34,7 @@ app.post('/addUser', (req, res) => {
 app.get('/getUser/:id', (req, res) => {
     const id = parseInt(req.params.id);
     const user = users.find(function(user){
-        return user.id === id;
+        return user.id == id;
     });
     if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -79,11 +79,17 @@ app.post('/applyForJob/:id', (req, res) => {
     if (!job) {
         return res.status(404).json({ message: "Job not found" });
     }
+    if(job.status !== 'open') {
+        return res.status(404).json({ message: "Job is closed" });
+    }
     const user = users.find(function(user){
         return user.id === userId;
     });
     if (!user) {
         return res.status(404).json({ message: "User not found" });
+    }
+    if(!job.applicants){
+        job.applicants = [];
     }
     job.applicants.push(user);
     res.json({
@@ -105,6 +111,7 @@ app.get('/job/applicants/:id', (req, res) => {
 app.post('/job/applicants/:jobId/acceptApplication/:id', (req, res) => {
     const jobId = parseInt(req.params.jobId);
     const userId = parseInt(req.params.id);
+
     const job = jobs.find(function(job){
         return job.id === jobId;
     });
@@ -117,11 +124,18 @@ app.post('/job/applicants/:jobId/acceptApplication/:id', (req, res) => {
     if (!user) {
         return res.status(404).json({ message: "User not found" });
     }
-    user.pastjobs.push(job);
-    const index = jobs.findIndex(function(job){
-        return job.id === jobId;
+    if(!user.pastjobs){
+        user.pastjobs = [];
+    }
+    user.pastjobs.push({
+        jobId: job.id,
+        jobTitle: job.title,
+        salary: job.salary,
+        description: job.description,
     });
-    jobs[index].status = 'closed';
+
+    job.status = 'closed';
+
     res.json({
         message: 'Job accepted successfully'
     });
