@@ -38,16 +38,14 @@ app.get('/getUser/:id', (req, res) => {
     res.json(user);
 });
 
-app.post('/updateUser', (req, res) => {
+app.post('/updateUser/:id', (req, res) => {
     const user = req.body;
     const id = parseInt(req.params.id);
-    const updatedUser = users.find(function(user){
-        return user.id === id;
-    });
-    if (!updatedUser) {
+    const index = users.findIndex(user => user.id === id);
+    if (index === -1) {
         return res.status(404).json({ message: "User not found" });
     }
-    updatedUser = user;
+    users[index] = { ...users[index], ...user };
     res.json({
         message: 'User updated successfully'
     });
