@@ -18,6 +18,11 @@ app.get('/allJobs', (req, res) => {
     res.send(jobs);
 });
 
+app.get('/availableJobs', (req, res) => {
+    const availableJobs = jobs.filter(job => job.status === 'open');
+    res.send(availableJobs);
+});
+
 app.post('/addUser', (req, res) => {
     const user = req.body;
     users.push(user);
@@ -113,15 +118,14 @@ app.post('/job/applicants/:jobId/acceptApplication/:id', (req, res) => {
         return res.status(404).json({ message: "User not found" });
     }
     user.pastjobs.push(job);
-    const jobIndex = jobs.findIndex(function(job){
+    const index = jobs.findIndex(function(job){
         return job.id === jobId;
     });
-    job.applicants.splice(jobIndex, 1);
+    jobs[index].status = 'closed';
     res.json({
         message: 'Job accepted successfully'
     });
 });
-
 
 app.post('/addJob', (req, res) => {
     const job = req.body;

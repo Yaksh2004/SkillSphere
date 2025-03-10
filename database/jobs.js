@@ -14,7 +14,8 @@ const jobs = [
             'Experience with Node.js and Express.js',
             'Familiarity with Git and GitHub'
         ],
-        applicants: []
+        applicants: [],
+        status: 'open'
     },
     {
         id: 2,
@@ -29,7 +30,8 @@ const jobs = [
             'Experience with Node.js and Express.js',
             'Familiarity with Git and GitHub'
         ],
-        applicants: 2
+        applicants: [],
+        status: 'open'
     }
 ]
 
