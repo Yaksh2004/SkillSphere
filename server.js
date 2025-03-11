@@ -43,7 +43,7 @@ app.get('/getUser/:id', (req, res) => {
     res.json(user);
 });
 
-app.post('/updateUser/:id', (req, res) => {
+app.put('/updateUser/:id', (req, res) => {
     const user = req.body;
     const id = parseInt(req.params.id);
     const index = users.findIndex(user => user.id === id);
