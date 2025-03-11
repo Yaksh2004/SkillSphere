@@ -4,7 +4,7 @@ const port = 3000;
 app.use(express.json());
 app.use(express.static('public'));
 const users = require('./database/users');  
-const jobs = require('./database/jobs');
+const { jobs , currentId} = require('./database/jobs');
 
 app.get('/', (req, res) => {
     res.sendFile('./public/index.html');
@@ -91,7 +91,14 @@ app.post('/applyForJob/:id', (req, res) => {
     if(!job.applicants){
         job.applicants = [];
     }
-    job.applicants.push(user);
+    job.applicants.push(
+        {
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            userAbout: user.about
+        }
+    );
     res.json({
         message: 'Job applied successfully'
     });

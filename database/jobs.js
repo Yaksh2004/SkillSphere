@@ -35,4 +35,4 @@ const jobs = [
     }
 ]
 
-module.exports = jobs;
+module.exports = { jobs , currentId};
