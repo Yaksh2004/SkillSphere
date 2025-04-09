@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Data Entry Job</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+
+  
+  <header class="flex justify-between items-center p-6 bg-gray-800">
+    <div class="text-2xl font-bold text-blue-400">
+      <a href="/">SkillSphere</a>
+    </div>
+    <nav class="flex space-x-6 text-sm">
+      <a href="new.ejs" class="hover:text-pink-400">Home</a>
+    </nav>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-6 py-12">
+    <h1 class="text-4xl font-bold text-pink-500 mb-4">Data Entry Specialist</h1>
+    <p class="text-gray-400 mb-6">
+      <i class="fas fa-map-marker-alt mr-1"></i> On-site | 
+      <i class="far fa-clock mx-1"></i> Part-Time | 
+      <i class="fas fa-money-bill-wave mx-1"></i> ₹15,000 - ₹25,000 INR/month
+    </p>
+
+    <section class="mb-6">
+      <h2 class="text-xl font-semibold mb-2 text-pink-400">Job Description</h2>
+      <p class="text-gray-300">
+        We're looking for a reliable Data Entry Specialist to input and manage data in our systems. This is a great opportunity for students or part-time professionals looking to earn from home or office.
+      </p>
+    </section>
+
+    <section class="mb-6">
+      <h2 class="text-xl font-semibold mb-2 text-pink-400">Responsibilities</h2>
+      <ul class="list-disc list-inside text-gray-300 space-y-1">
+        <li>Enter accurate data into spreadsheets, forms, and databases.</li>
+        <li>Verify and cross-check information for errors.</li>
+        <li>Organize and maintain records with confidentiality.</li>
+        <li>Generate reports as needed by the supervisor.</li>
+      </ul>
+    </section>
+
+    <section class="mb-6">
+      <h2 class="text-xl font-semibold mb-2 text-pink-400">Qualifications</h2>
+      <ul class="list-disc list-inside text-gray-300 space-y-1">
+        <li>Basic computer literacy and typing speed of 40+ WPM.</li>
+        <li>Attention to detail and ability to multitask.</li>
+        <li>Prior experience in data entry is preferred but not required.</li>
+        <li>Familiarity with MS Excel or Google Sheets is a plus.</li>
+      </ul>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-xl font-semibold mb-2 text-pink-400">Apply Now</h2>
+      <form id="applyForm" class="space-y-4">
+        <input type="text" class="w-full p-3 bg-gray-800 border border-gray-700 rounded" id="fname" placeholder="Your Name" required>
+        <input type="email" class="w-full p-3 bg-gray-800 border border-gray-700 rounded" id="f-email" placeholder="Your Email" required>
+        <input type="text" class="w-full p-3 bg-gray-800 border border-gray-700 rounded" id="f-portfolio" placeholder="Portfolio URL (Optional)">
+        <textarea class="w-full p-3 bg-gray-800 border border-gray-700 rounded" rows="5" id="f-cover" placeholder="Cover Letter"></textarea>
+        <button type="submit" class="w-full bg-pink-600 hover:bg-pink-700 font-bold py-3 rounded">Submit Application</button>
+      </form>
+    </section>
+  </main>
+
+  <footer class="bg-gray-800 text-center text-gray-400 text-sm py-6">
+    © 2025 SkillSphere. All rights reserved.
+  </footer>
+
+  <script>
+    document.getElementById("applyForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const data = {
+        name: document.getElementById("fname").value,
+        email: document.getElementById("f-email").value,
+        portfolio: document.getElementById("f-portfolio").value,
+        cover: document.getElementById("f-cover").value
+      };
+
+      fetch("http://localhost:8000/saveData", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      })
+      .then(res => res.text())
+      .then(data => alert("Application submitted successfully!"))
+      .catch(err => alert("There was an error submitting your application."));
+    });
+  </script>
+</body>
+</

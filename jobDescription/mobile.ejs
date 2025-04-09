@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mobile App Developer Job</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+
+  <header class="flex justify-between items-center p-6 bg-gray-800">
+    <div class="text-2xl font-bold text-blue-400">
+      <a href="/">SkillSphere</a>
+    </div>
+    <nav class="flex space-x-6 text-sm">
+      <a href="new.ejs" class="hover:text-pink-400">Home</a>
+    </nav>
+  </header>
+
+  
+  <main class="max-w-4xl mx-auto px-6 py-12">
+    <h1 class="text-4xl font-bold text-pink-500 mb-4">Mobile App Developer</h1>
+    <p class="text-gray-400 mb-6">
+      <i class="fas fa-map-marker-alt mr-1"></i> Remote | 
+      <i class="far fa-clock mx-1"></i> Contract | 
+      <i class="fas fa-money-bill-wave mx-1"></i> ₹60,000 - ₹90,000 INR/month
+    </p>
+
+    <section class="mb-6">
+      <h2 class="text-xl font-semibold mb-2 text-pink-400">Job Description</h2>
+      <p class="text-gray-300">
+        We’re hiring an experienced Mobile App Developer to create innovative mobile applications for Android and iOS platforms. Work with a creative team and contribute to our growing app ecosystem.
+      </p>
+    </section>
+
+    <section class="mb-6">
+      <h2 class="text-xl font-semibold mb-2 text-pink-400">Responsibilities</h2>
+      <ul class="list-disc list-inside text-gray-300 space-y-1">
+        <li>Design and build mobile applications using Flutter/React Native.</li>
+        <li>Collaborate with cross-functional teams to define and design new features.</li>
+        <li>Maintain code quality and ensure responsiveness.</li>
+        <li>Publish apps to Google Play and App Store.</li>
+      </ul>
+    </section>
+
+    <section class="mb-6">
+      <h2 class="text-xl font-semibold mb-2 text-pink-400">Qualifications</h2>
+      <ul class="list-disc list-inside text-gray-300 space-y-1">
+        <li>Bachelor’s in Computer Science or related field.</li>
+        <li>Minimum 1 year of mobile app development experience.</li>
+        <li>Strong knowledge of Flutter or React Native.</li>
+        <li>Experience with Firebase and REST APIs is a plus.</li>
+      </ul>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-xl font-semibold mb-2 text-pink-400">Apply Now</h2>
+      <form id="applyForm" class="space-y-4">
+        <input type="text" class="w-full p-3 bg-gray-800 border border-gray-700 rounded" id="fname" placeholder="Your Name" required>
+        <input type="email" class="w-full p-3 bg-gray-800 border border-gray-700 rounded" id="f-email" placeholder="Your Email" required>
+        <input type="text" class="w-full p-3 bg-gray-800 border border-gray-700 rounded" id="f-portfolio" placeholder="Portfolio URL">
+        <textarea class="w-full p-3 bg-gray-800 border border-gray-700 rounded" rows="5" id="f-cover" placeholder="Cover Letter"></textarea>
+        <button type="submit" class="w-full bg-pink-600 hover:bg-pink-700 font-bold py-3 rounded">Submit Application</button>
+      </form>
+    </section>
+  </main>
+
+ 
+  <footer class="bg-gray-800 text-center text-gray-400 text-sm py-6">
+    © 2025 SkillSphere. All rights reserved.
+  </footer>
+
+  <script>
+    document.getElementById("applyForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const data = {
+        name: document.getElementById("fname").value,
+        email: document.getElementById("f-email").value,
+        portfolio: document.getElementById("f-portfolio").value,
+        cover: document.getElementById("f-cover").value
+      };
+
+      fetch("http://localhost:8000/saveData", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      })
+      .then(res => res.text())
+      .then(data => alert("Application submitted successfully!"))
+      .catch(err => alert("There was an error submitting your application."));
+    });
+  </script>
+</body>
+</html>
