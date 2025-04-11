@@ -3,27 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <title>Login</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="/style.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="container">
+  
     <div class="welcome-section">
       <h1>Welcome Back <span>.!</span></h1>
-      <button class="skip-btn"><i>Skip the lag ?</i></button>
+      <form action="/skip" method="GET">
+        <button type="submit" class="skip-btn"><i>Skip the lag ?</i></button>
+      </form>
     </div>
 
     <div class="login-card">
       <h2>Login</h2>
       <p>Glad you're back.!</p>
 
-      <form action="selectRole.ejs" method="POST">
-        <input type="text" name="username" placeholder="Username" required />
+      <% if (typeof message !== 'undefined') { %>
+        <div class="message"><%= message %></div>
+      <% } %>
+
+      <form action="/select-role" method="POST">
+        <input type="text" name="username" placeholder="Username" value="<%= typeof username !== 'undefined' ? username : '' %>" required />
+        
         <input type="password" name="password" placeholder="Password" required />
 
         <div class="remember">
-          <input type="checkbox" id="remember" />
+          <input type="checkbox" id="remember" name="remember" />
           <label for="remember">Remember me</label>
         </div>
 
@@ -34,12 +41,12 @@
       <div class="divider">Or</div>
 
       <div class="social-login">
-        <img src="https://cdn-icons-png.flaticon.com/512/300/300221.png" alt="Google" />
-        <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" />
-        <img src="https://cdn-icons-png.flaticon.com/512/733/733553.png" alt="GitHub" />
+        <img src="https://www.pngmart.com/files/16/Google-Logo-PNG-Image.png" alt="Google" />
+        <img src="https://static.vecteezy.com/system/resources/previews/018/930/698/original/facebook-logo-facebook-icon-transparent-free-png.png" alt="Facebook" />
+        <img src="https://pngimg.com/uploads/github/github_PNG80.png" alt="GitHub" />
       </div>
 
-      <p class="signup">Don't have an account ? <a href="#">Signup</a></p>
+      <p class="signup">Don't have an account? <a href="#">Signup</a></p>
 
       <div class="footer-links">
         <a href="#">Terms & Conditions</a>
@@ -53,3 +60,4 @@
   </div>
 </body>
 </html>
+
