@@ -1,0 +1,29 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+  }
+
+  .background-slideshow {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    z-index: -1;
+    transition: background-image 1s ease-in-out;
+  }
+
+  .overlay {
+    background-color: rgba(0, 0, 0, 0.7);
+    min-height: 100vh;
+    position: relative;
+  }
+
+  .job-panel {
+    display: none;
+  }
+
+  .group:hover .job-panel {
+    display: flex;
+  }
