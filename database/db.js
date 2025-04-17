@@ -1,7 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const app = express();
-const db = mongoose.connect('mongodb+srv://Yaksh:Yaksh2004@cluster0.xosik.mongodb.net/SkillSphere').then(() => console.log("MongoDB connected"))
+require('dotenv').config();
+const db = mongoose.connect(process.env.MONGO_URI).then(() => console.log("MongoDB connected"))
 .catch(err => console.error("MongoDB connection error:", err));
 
 const UserSchema = new mongoose.Schema({
