@@ -2,162 +2,157 @@ const express = require('express');
 const app = express();
 const port = 3000;
 app.use(express.json());
-app.use(express.static('public'));
-const users = require('./database/users');  
-const { jobs , currentId} = require('./database/jobs');
+const { UserModel , JobModel } = require('./database/db');
 
-app.get('/', (req, res) => {
-    res.sendFile('./public/index.html');
-});
 
-app.get('/allUsers', (req, res) => {
+// Users
+app.get('/allUsers', async (req, res) => {
+    const users = await UserModel.find();
     res.send(users);
 });
 
-app.get('/allJobs', (req, res) => {
-    res.send(jobs);
-});
-
-app.get('/availableJobs', (req, res) => {
-    const availableJobs = jobs.filter(job => job.status === 'open');
-    res.send(availableJobs);
-});
-
-app.post('/addUser', (req, res) => {
-    const user = req.body;
-    users.push(user);
+app.post('/addUser', async (req, res) => {
+    const user = new UserModel(req.body);
+    await user.save();
     res.json({
-        message: 'User added successfully'
+        message: "Login successful",
+        user: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+        }
     });
 });
 
-app.get('/getUser/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const user = users.find(function(user){
-        return user.id == id;
-    });
+app.get('/getUser/:id', async (req, res) => {
+    const user = await UserModel.findById(req.params.id);
     if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({ message: 'User not found' });
     }
 
     res.json(user);
 });
 
-app.put('/updateUser/:id', (req, res) => {
-    const user = req.body;
-    const id = parseInt(req.params.id);
-    const index = users.findIndex(user => user.id === id);
-    if (index === -1) {
-        return res.status(404).json({ message: "User not found" });
+
+app.put('/updateUser/:id', async (req, res) => {
+    const updated = await UserModel.findByIdAndUpdate(req.params.id, req.body);
+    if (!updated) {
+        return res.status(404).json({ message: 'User not found' });
     }
-    users[index] = { ...users[index], ...user };
+
+    res.json({ message: 'User updated successfully' });
+});
+
+
+app.delete('/deleteUser/:id', async (req, res) => {
+    const deleted = await UserModel.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ message: 'User deleted successfully' });
+});
+
+
+// Jobs
+app.get('/allJobs', async (req, res) => {
+    const jobs = await JobModel.find();
+    res.send(jobs);
+});
+
+
+app.get('/availableJobs', async (req, res) => {
+    const availableJobs = await JobModel.find({ status: 'open' });
+    res.send(availableJobs);
+});
+
+app.post('/addJob', async (req, res) => {
+    const job = new JobModel({ ...req.body, status: 'open' });
+    await job.save();
+
     res.json({
-        message: 'User updated successfully'
+        message: 'Job added successfully',
+        jobId: job._id
     });
 });
 
-app.delete('/deleteUser/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const index = users.findIndex(function(user){
-        return user.id === id;
-    });
-    if (index === -1) {
-        return res.status(404).json({ message: "User not found" });
-    }
-    users.splice(index, 1);
-    res.json({
-        message: 'User deleted successfully'
-    });
-});
 
-app.post('/applyForJob/:id', (req, res) => {
-    const jobId = parseInt(req.params.id);
+
+app.post('/applyForJob/:id', async (req, res) => {
+    const jobId = req.params.id;
     const userId = req.body.id;
-    const job = jobs.find(function(job){
-        return job.id === jobId;
-    });
+
+    const job = await JobModel.findById(jobId);
     if (!job) {
         return res.status(404).json({ message: "Job not found" });
     }
-    if(job.status !== 'open') {
-        return res.status(404).json({ message: "Job is closed" });
+
+    if (job.status !== 'open') {
+        return res.status(400).json({ message: "Job is closed" });
     }
-    const user = users.find(function(user){
-        return user.id === userId;
-    });
+
+    const user = await UserModel.findById(userId);
     if (!user) {
         return res.status(404).json({ message: "User not found" });
     }
-    if(!job.applicants){
-        job.applicants = [];
-    }
-    job.applicants.push(
-        {
-            userId: user.id,
-            userName: user.name,
-            userEmail: user.email,
-            userAbout: user.about
-        }
-    );
-    res.json({
-        message: 'Job applied successfully'
+
+    job.applicants.push({
+        userId: user._id,
+        userName: user.name,
+        userEmail: user.email,
+        userAbout: user.about
     });
+
+    await job.save();
+
+    res.json({ message: "Job applied successfully" });
 });
 
-app.get('/job/applicants/:id', (req, res) => {
-    const jobId = parseInt(req.params.id);
-    const job = jobs.find(function(job){
-        return job.id === jobId;
-    });
+
+// Get job applicants
+app.get('/job/applicants/:id', async (req, res) => {
+    const jobId = req.params.id;
+
+    const job = await JobModel.findById(jobId);
     if (!job) {
         return res.status(404).json({ message: "Job not found" });
     }
+
     res.json(job.applicants);
 });
 
-app.post('/job/applicants/:jobId/acceptApplication/:id', (req, res) => {
-    const jobId = parseInt(req.params.jobId);
-    const userId = parseInt(req.params.id);
 
-    const job = jobs.find(function(job){
-        return job.id === jobId;
-    });
+// Accept a job application
+app.post('/job/applicants/:jobId/acceptApplication/:userId', async (req, res) => {
+    const { jobId, userId } = req.params;
+
+    const job = await JobModel.findById(jobId);
     if (!job) {
         return res.status(404).json({ message: "Job not found" });
     }
-    const user = users.find(function(user){
-        return user.id === userId;
-    });
+
+    const user = await UserModel.findById(userId);
     if (!user) {
         return res.status(404).json({ message: "User not found" });
     }
-    if(!user.pastjobs){
-        user.pastjobs = [];
-    }
+
     user.pastjobs.push({
-        jobId: job.id,
+        jobId: job._id,
         jobTitle: job.title,
         salary: job.salary,
-        description: job.description,
+        description: job.description
     });
 
     job.status = 'closed';
 
-    res.json({
-        message: 'Job accepted successfully'
-    });
-});
+    await user.save();
+    await job.save();
 
-app.post('/addJob', (req, res) => {
-    const job = req.body;
-    job.id = currentId++;
-    jobs.push(job);
-    res.json({
-        message: 'Job added successfully'
-    });
+    res.json({ message: "Job accepted and added to user's past jobs" });
 });
 
 
+// Start server
 app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-}); 
+    console.log(`Server running on port ${port}`);
+});
