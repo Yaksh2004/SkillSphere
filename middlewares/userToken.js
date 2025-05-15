@@ -9,7 +9,10 @@ const userToken = (req, res, next) => {
   }
 
   try {
-     
+    const decoded = jwt.verify(token, jwtSecret);
+    if (decoded.role !== 'user') {
+      return res.status(403).json({ message: 'Access denied: User only' });
+    }
     req.user = decoded;
     next();
   } catch (err) {

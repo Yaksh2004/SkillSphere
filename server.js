@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const port = 3000;
+const port = 5000;
 require('dotenv').config();
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
@@ -25,6 +25,11 @@ app.get('/allUsers', async (req, res) => {
 // Add a new user (signup)
 app.post('/addUser', async (req, res) => {
   try {
+    const email = req.body.email;
+    const existingUser = await UserModel.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
     const user = new UserModel(req.body);
     const hash = await bcrypt.hash(user.password, saltRounds);
     user.password = hash;
@@ -73,7 +78,13 @@ app.get('/profile', userToken, async (req, res) => {
   try {
     const user = await UserModel.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json(user);
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      about: user.about,
+      pastjobs: user.pastjobs
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -82,13 +93,52 @@ app.get('/profile', userToken, async (req, res) => {
 // Update user profile
 app.put('/profile', userToken, async (req, res) => {
   try {
-    const updated = await UserModel.findByIdAndUpdate(req.user._id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ message: 'User not found' });
-    res.json({ message: 'User updated successfully', user: updated });
+    const { password, ...updates } = req.body;
+
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      req.user._id,
+      { $set: updates }
+    );
+
+    if (!updatedUser) return res.status(404).json({ message: 'User not found' });
+
+    const token = jwt.sign({ _id: updatedUser._id, email: updatedUser.email }, jwtSecret);
+
+    res.json({ message: 'User updated successfully',
+      token
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
+
+// Update password 
+app.put('/update-password', userToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword)
+    return res.status(400).json({ message: 'Both current and new passwords are required' });
+
+  try {
+    const user = await UserModel.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) return res.status(401).json({ message: 'Current password is incorrect' });
+
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    user.password = hashedPassword;
+    await user.save();
+
+    const token = jwt.sign({ _id: user._id, email: user.email }, jwtSecret);
+
+    res.json({ message: 'Password updated successfully', token });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 
 // Delete user profile
 app.delete('/profile', userToken, async (req, res) => {
@@ -162,7 +212,14 @@ app.get('/recruiter/profile', recruiterToken, async (req, res) => {
   try {
     const recruiter = await RecruiterModel.findById(req.recruiter._id);
     if (!recruiter) return res.status(404).json({ message: 'Recruiter not found' });
-    res.json(recruiter);
+
+    res.json({
+      _id: recruiter._id,
+      name: recruiter.name,
+      email: recruiter.email,
+      about: recruiter.about,
+      postedJobs: recruiter.postedJobs
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -171,9 +228,46 @@ app.get('/recruiter/profile', recruiterToken, async (req, res) => {
 // Update recruiter profile
 app.put('/recruiter/profile', recruiterToken, async (req, res) => {
   try {
-    const updated = await RecruiterModel.findByIdAndUpdate(req.recruiter._id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ message: 'Recruiter not found' });
-    res.json({ message: 'Recruiter updated successfully', recruiter: updated });
+    const { password, ...updates } = req.body;
+
+    const updatedRecruiter = await RecruiterModel.findByIdAndUpdate(
+      req.recruiter._id,
+      { $set: updates },
+      { new: true }
+    );
+
+    if (!updatedRecruiter) return res.status(404).json({ message: 'Recruiter not found' });
+    const token = jwt.sign({ _id: updatedRecruiter._id, email: updatedRecruiter.email }, jwtSecret);
+
+    res.json({ message: 'Recruiter profile updated successfully',
+      token
+     });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Update recruiter password
+app.put('/recruiter/update-password', recruiterToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword)
+    return res.status(400).json({ message: 'Both current and new passwords are required' });
+
+  try {
+    const recruiter = await RecruiterModel.findById(req.recruiter._id);
+    if (!recruiter) return res.status(404).json({ message: 'Recruiter not found' });
+
+    const isMatch = await bcrypt.compare(currentPassword, recruiter.password);
+    if (!isMatch) return res.status(401).json({ message: 'Current password is incorrect' });
+
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    recruiter.password = hashedPassword;
+    await recruiter.save();
+
+    const token = jwt.sign({ _id: recruiter._id, email: recruiter.email }, jwtSecret);
+
+    res.json({ message: 'Password updated successfully', token });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -190,11 +284,12 @@ app.delete('/recruiter/profile', recruiterToken, async (req, res) => {
   }
 });
 
+// get recruiter jobs
 app.get('/recruiter/jobs', recruiterToken, async (req, res) => {
   try {
     const recruiter = await RecruiterModel.findById(req.recruiter._id);
     if (!recruiter) return res.status(404).json({ message: 'Recruiter not found' });
-    res.json(recruiter.postedJobs);
+    res.json({ jobs: recruiter.postedJobs });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -220,6 +315,15 @@ app.post('/addJob', recruiterToken, async (req, res) => {
   try {
     const job = new JobModel({ ...req.body, status: 'open', postedBy: req.recruiter._id });
     await job.save();
+    await RecruiterModel.findByIdAndUpdate(req.recruiter._id, {
+    $push: { 
+      postedJobs: { 
+        jobId: job._id, 
+        title: job.title, 
+        salary: job.salary
+      } 
+    }
+});
     res.json({
       message: 'Job added successfully',
       jobId: job._id,
@@ -233,7 +337,6 @@ app.post('/addJob', recruiterToken, async (req, res) => {
 app.post('/applyForJob/:id', userToken, async (req, res) => {
   try {
     const jobId = req.params.id;
-    const userId = req.user._id;
 
     const job = await JobModel.findById(jobId);
     if (!job) return res.status(404).json({ message: "Job not found" });
@@ -242,7 +345,7 @@ app.post('/applyForJob/:id', userToken, async (req, res) => {
       return res.status(400).json({ message: "Job is closed" });
     }
 
-    const user = await UserModel.findById(userId);
+    const user = await UserModel.findById(req.user._id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     job.applicants.push({
@@ -272,12 +375,16 @@ app.get('/job/applicants/:id', recruiterToken, async (req, res) => {
 });
 
 // Accept a job application (recruiter only)
-app.post('/job/applicants/:jobId/acceptApplication/:userId', recruiterToken, async (req, res) => {
+app.post('/job/applicants/:jobId/acceptApplicant/:userId', recruiterToken, async (req, res) => {
   try {
     const { jobId, userId } = req.params;
 
     const job = await JobModel.findOne({_id: jobId, postedBy: req.recruiter._id});
     if (!job) return res.status(404).json({ message: "Job not found" });
+
+    if (job.status === 'closed') {
+      return res.status(400).json({ message: "Job is already closed" });
+    }
 
     const user = await UserModel.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -295,6 +402,29 @@ app.post('/job/applicants/:jobId/acceptApplication/:userId', recruiterToken, asy
     await job.save();
 
     res.json({ message: "Job accepted and added to user's past jobs" });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Delete a job 
+
+app.delete('/recruiter/job/:id', recruiterToken, async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const job = await JobModel.findOne({ _id: jobId, postedBy: req.recruiter._id });
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    if (job.status === 'closed') {
+      return res.status(400).json({ message: "Job is already closed" });
+    }
+
+    await JobModel.findByIdAndDelete(jobId);
+    await RecruiterModel.findByIdAndUpdate(req.recruiter._id, {
+      $pull: { postedJobs: { jobId: jobId } }
+    });
+
+    res.json({ message: "Job deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
