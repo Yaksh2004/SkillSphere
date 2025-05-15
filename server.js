@@ -1,99 +1,205 @@
 const express = require('express');
 const app = express();
 const port = 3000;
+require('dotenv').config();
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 const jwt = require('jsonwebtoken');
 const jwtSecret = process.env.JWT_SECRET;
+const userToken = require('./middlewares/userToken');
+const recruiterToken = require('./middlewares/recruiterToken');
 
 app.use(express.json());
 
 // Models
-const UserModel = require('./models/User');
-const JobModel = require('./models/Job');
+const UserModel = require('./database/db').UserModel;
+const JobModel = require('./database/db').JobModel;
+const RecruiterModel = require('./database/db').RecruiterModel;
 
 // USER ROUTES
-
-// Get all users
 app.get('/allUsers', async (req, res) => {
   const users = await UserModel.find();
   res.send(users);
 });
 
-// Add a new user
+// Add a new user (signup)
 app.post('/addUser', async (req, res) => {
-  const user = new UserModel(req.body);
-  bcrypt.hash(user.password, saltRounds, async function (err, hash) {
-    if (err) {
-      return res.status(500).json({ message: 'Error generating hash' });
-    }
+  try {
+    const user = new UserModel(req.body);
+    const hash = await bcrypt.hash(user.password, saltRounds);
     user.password = hash;
     await user.save();
     res.json({
-      message: "Login successful",
+      message: "Signup successful",
       user: {
         _id: user._id,
         name: user.name,
         email: user.email,
       },
     });
-  });
+  } catch (err) {
+    res.status(500).json({ message: 'Error creating user', error: err.message });
+  }
 });
 
 // Login a user
 app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const user = await UserModel.findOne({ email });
-  if (!user) {
-    return res.json({ message: "User not found" });
-  }
+    const user = await UserModel.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-  bcrypt.compare(password, user.password, (err, result) => {
-    if (err) return res.json({ message: "Error comparing passwords" });
+    const result = await bcrypt.compare(password, user.password);
+    if (!result) return res.status(401).json({ message: "Invalid password" });
 
-    if (!result) {
-      return res.json({ message: "Invalid password" });
-    }
+    const token = jwt.sign({ _id: user._id, role: 'user' }, jwtSecret);
 
     res.json({
       message: "Login successful",
+      token,
       user: {
-        _id: user._id,
         name: user.name,
         email: user.email,
       },
     });
-  });
-});
-
-
-// Get a user by ID
-app.get('/getUser/:id', async (req, res) => {
-  const user = await UserModel.findById(req.params.id);
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
-  res.json(user);
 });
 
-// Update user by ID
-app.put('/updateUser/:id', async (req, res) => {
-  const updated = await UserModel.findByIdAndUpdate(req.params.id, req.body);
-  if (!updated) {
-    return res.status(404).json({ message: 'User not found' });
+// user profile
+app.get('/profile', userToken, async (req, res) => {
+  try {
+    const user = await UserModel.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
-  res.json({ message: 'User updated successfully' });
 });
 
-// Delete a user by ID
-app.delete('/deleteUser/:id', async (req, res) => {
-  const deleted = await UserModel.findByIdAndDelete(req.params.id);
-  if (!deleted) {
-    return res.status(404).json({ message: 'User not found' });
+// Update user profile
+app.put('/profile', userToken, async (req, res) => {
+  try {
+    const updated = await UserModel.findByIdAndUpdate(req.user._id, req.body, { new: true });
+    if (!updated) return res.status(404).json({ message: 'User not found' });
+    res.json({ message: 'User updated successfully', user: updated });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
-  res.json({ message: 'User deleted successfully' });
 });
+
+// Delete user profile
+app.delete('/profile', userToken, async (req, res) => {
+  try {
+    const deleted = await UserModel.findByIdAndDelete(req.user._id);
+    if (!deleted) return res.status(404).json({ message: 'User not found' });
+    res.json({ message: 'User deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+
+// RECRUITER ROUTES
+
+// Recruiter signup
+app.post('/recruiter/signup', async (req, res) => {
+  try {
+    const { name, email, password, company } = req.body;
+
+    const existing = await RecruiterModel.findOne({ email });
+    if (existing) return res.status(400).json({ message: "Email already registered" });
+
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const recruiter = new RecruiterModel({
+      name,
+      email,
+      password: hashedPassword,
+      company,
+    });
+
+    await recruiter.save();
+
+    res.json({ message: 'Recruiter signup successful' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Recruiter login
+app.post('/recruiter/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const recruiter = await RecruiterModel.findOne({ email });
+    if (!recruiter) return res.status(404).json({ message: 'Recruiter not found' });
+
+    const isMatch = await bcrypt.compare(password, recruiter.password);
+    if (!isMatch) return res.status(401).json({ message: 'Invalid password' });
+
+    const token = jwt.sign({ _id: recruiter._id, role: 'recruiter' }, jwtSecret);
+
+    res.json({
+      message: 'Login successful',
+      token,
+      recruiter: {
+        _id: recruiter._id,
+        name: recruiter.name,
+        email: recruiter.email,
+        company: recruiter.company,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Get recruiter profile
+app.get('/recruiter/profile', recruiterToken, async (req, res) => {
+  try {
+    const recruiter = await RecruiterModel.findById(req.recruiter._id);
+    if (!recruiter) return res.status(404).json({ message: 'Recruiter not found' });
+    res.json(recruiter);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Update recruiter profile
+app.put('/recruiter/profile', recruiterToken, async (req, res) => {
+  try {
+    const updated = await RecruiterModel.findByIdAndUpdate(req.recruiter._id, req.body, { new: true });
+    if (!updated) return res.status(404).json({ message: 'Recruiter not found' });
+    res.json({ message: 'Recruiter updated successfully', recruiter: updated });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Delete recruiter profile
+app.delete('/recruiter/profile', recruiterToken, async (req, res) => {
+  try {
+    const deleted = await RecruiterModel.findByIdAndDelete(req.recruiter._id);
+    if (!deleted) return res.status(404).json({ message: 'Recruiter not found' });
+    res.json({ message: 'Recruiter deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+app.get('/recruiter/jobs', recruiterToken, async (req, res) => {
+  try {
+    const recruiter = await RecruiterModel.findById(req.recruiter._id);
+    if (!recruiter) return res.status(404).json({ message: 'Recruiter not found' });
+    res.json(recruiter.postedJobs);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 
 // JOB ROUTES
 
@@ -109,86 +215,91 @@ app.get('/availableJobs', async (req, res) => {
   res.send(availableJobs);
 });
 
-// Add a new job
-app.post('/addJob', async (req, res) => {
-  const job = new JobModel({ ...req.body, status: 'open' });
-  await job.save();
-  res.json({
-    message: 'Job added successfully',
-    jobId: job._id,
-  });
+// Add a new job (only recruiter)
+app.post('/addJob', recruiterToken, async (req, res) => {
+  try {
+    const job = new JobModel({ ...req.body, status: 'open', postedBy: req.recruiter._id });
+    await job.save();
+    res.json({
+      message: 'Job added successfully',
+      jobId: job._id,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
 });
 
-// Apply for a job
-app.post('/applyForJob/:id', async (req, res) => {
-  const jobId = req.params.id;
-  const userId = req.body.id;
+// Apply for a job (only user)
+app.post('/applyForJob/:id', userToken, async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const userId = req.user._id;
 
-  const job = await JobModel.findById(jobId);
-  if (!job) {
-    return res.status(404).json({ message: "Job not found" });
+    const job = await JobModel.findById(jobId);
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    if (job.status !== 'open') {
+      return res.status(400).json({ message: "Job is closed" });
+    }
+
+    const user = await UserModel.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    job.applicants.push({
+      userId: user._id,
+      userName: user.name,
+      userEmail: user.email,
+      userAbout: user.about,
+    });
+
+    await job.save();
+    res.json({ message: "Job applied successfully" });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
-
-  if (job.status !== 'open') {
-    return res.status(400).json({ message: "Job is closed" });
-  }
-
-  const user = await UserModel.findById(userId);
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
-  }
-
-  job.applicants.push({
-    userId: user._id,
-    userName: user.name,
-    userEmail: user.email,
-    userAbout: user.about,
-  });
-
-  await job.save();
-  res.json({ message: "Job applied successfully" });
 });
 
-// Get job applicants
-app.get('/job/applicants/:id', async (req, res) => {
-  const jobId = req.params.id;
-
-  const job = await JobModel.findById(jobId);
-  if (!job) {
-    return res.status(404).json({ message: "Job not found" });
+// Get job applicants (recruiter only)
+app.get('/job/applicants/:id', recruiterToken, async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const job = await JobModel.findOne({_id: jobId, postedBy: req.recruiter._id});
+    if (!job) return res.status(404).json({ message: "Job not found" });
+    res.json(job.applicants);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
-
-  res.json(job.applicants);
 });
 
-// Accept a job application
-app.post('/job/applicants/:jobId/acceptApplication/:userId', async (req, res) => {
-  const { jobId, userId } = req.params;
+// Accept a job application (recruiter only)
+app.post('/job/applicants/:jobId/acceptApplication/:userId', recruiterToken, async (req, res) => {
+  try {
+    const { jobId, userId } = req.params;
 
-  const job = await JobModel.findById(jobId);
-  if (!job) {
-    return res.status(404).json({ message: "Job not found" });
+    const job = await JobModel.findOne({_id: jobId, postedBy: req.recruiter._id});
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    const user = await UserModel.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.pastjobs.push({
+      jobId: job._id,
+      jobTitle: job.title,
+      salary: job.salary,
+      description: job.description,
+    });
+
+    job.status = 'closed';
+
+    await user.save();
+    await job.save();
+
+    res.json({ message: "Job accepted and added to user's past jobs" });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
-
-  const user = await UserModel.findById(userId);
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
-  }
-
-  user.pastjobs.push({
-    jobId: job._id,
-    jobTitle: job.title,
-    salary: job.salary,
-    description: job.description,
-  });
-
-  job.status = 'closed';
-
-  await user.save();
-  await job.save();
-
-  res.json({ message: "Job accepted and added to user's past jobs" });
 });
+
 
 // START SERVER
 app.listen(port, () => {

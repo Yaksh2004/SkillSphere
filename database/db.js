@@ -55,6 +55,10 @@ const JobSchema = new mongoose.Schema({
     },
   ],
   status: { type: String, required: true }, 
+  postedBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Recruiter',
+  }
 });
 
 const JobModel = mongoose.model('Job', JobSchema);
